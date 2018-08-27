@@ -1,0 +1,6 @@
+PyMySQL==0.8.0
+colorlog==3.1.4
+colorama==0.3.9
+requests==2.18.4
+Flask==0.12.2
+PyYAML==3.13

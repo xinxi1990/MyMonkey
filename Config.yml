@@ -1,0 +1,13 @@
+apkname: "com.xxxx.xxxxx"
+runtime: 10
+seed: 20
+throttle: 500
+simulator: true
+appdebug: true
+apkpath: "xxxx.apk"
+devces: 192.168.56.101:5555
+whitelist: "com.xxx.xxx.xxxxx"
+account: "13800138000"
+pwd: "123321"
+loglevel: "INFO"
+
