@@ -1,4 +1,10 @@
 # coding=utf-8
+
+'''
+命令行执行
+@author xinxi
+'''
+
 import sys, getopt,os
 from GetMemory import GetMemory
 from GetCPU import GetCPU
@@ -6,25 +12,18 @@ from GetNetWork import GetNetWork
 from GetFPS import GetFPS
 from BasicMonkey import BasicMonkey
 from AdbCommon import AdbCommon
-from LoginTest import LoginTest
 from ReportServer import Flask
 from SendMail import *
-from GenymatonStart import *
 from CrashSQL import *
 from DateBean import DateBean
 import logger
 
 
+
 def run(argv):
-    '''
-    命令格式：python Run.py --apkname=com.luojilab.player --runtime=60 --seed=20 apkpath=/apk/out/appdebug.apk
-    :param argv:入参
-    :return:
-    '''
 
     apkname = ''
     # apk包名
-
     runtime = ''
     # monkey运行时间
 
@@ -50,10 +49,10 @@ def run(argv):
     # 白名单列表
 
     account = ''
-    # 得到账号
+    # 账号
 
     pwd = ''
-    # 得到密码
+    # 密码
 
     loglevel = ''
     # 日志等级
@@ -236,102 +235,94 @@ def main(**kwargs):
     fps = GetFPS(devices)
     mem = GetMemory(devices)
     cpu = GetCPU(devices)
-    lg = LoginTest()
-    # 初始化类
 
-    lg.uiautomater_wifi(devices)
-    # 检查wifi状态并开启
+    starttime = int(abs(round(time.time(), 0)))
+    starttimestamps = time.strftime('%Y-%m-%d %H:%M:%S')
 
-    if lg.appiumlogin(devices,account,pwd,apkname) == 0:
+    logger.log_info('Monkey脚本 - 开始' + '\n' \
+                 + '开始时间:%s' % str(starttimestamps))
 
-        starttime = int(abs(round(time.time(), 0)))
-        starttimestamps = time.strftime('%Y-%m-%d %H:%M:%S')
+    logger.log_info('删除临时保存性能文件')
 
-        logger.log_info('Monkey脚本 - 开始' + '\n' \
-                     + '开始时间:%s' % str(starttimestamps))
+    if adc.delfiles(db.outfolder)  == 0 and bsm.emptylogcat() == 0:
+        # 删除out文件夹下所有临时文件
 
-        logger.log_info('删除临时保存性能文件')
+        monkeylog = db.monkeylog
+        monkeyerrorlog = db.monkeyerrorlog
+        writeerror = db.writeerror
+        monkeycmd = bsm.runmonkey(seed, apkname, throttle, runtime, monkeylog, monkeyerrorlog)
+        # 执行Monkey
 
-        if adc.delfiles(db.outfolder)  == 0 and bsm.emptylogcat() == 0:
-            # 删除out文件夹下所有临时文件
+        flag = True
+        time.sleep(3)
 
-            monkeylog = db.monkeylog
-            monkeyerrorlog = db.monkeyerrorlog
-            writeerror = db.writeerror
+        while flag:
 
-            monkeycmd = bsm.runmonkey(seed, apkname, throttle, runtime, monkeylog, monkeyerrorlog)
-            # 执行Monkey
+            if not os.path.exists(db.outfolder):
+                os.mkdir(db.outfolder)
+            # 创建性能报告临时文件夹
 
-            flag = True
-            time.sleep(3)
+            adc.checkwifi()
+            # 检查wifi状态并开启
 
-            while flag:
+            activity = adc.getactivity()
+            # 获取当前运行的activity
 
-                if not os.path.exists(db.outfolder):
-                    os.mkdir(db.outfolder)
-                # 创建性能报告临时文件夹
+            bsm.whitelistrun(activity,whitelist)
+            # 检测monkey运行状态
 
-                adc.checkwifi()
-                # 检查wifi状态并开启
+            cpu.getcpu(activity)
+            # 采集CPU
+            mem.getmeminfo(activity)
+            # 采集内存
+            net.selectnetwork(simulator,activity)
+            # 采集流量
+            fps.getfps(activity)
+            # 采集FPS
 
-                activity = adc.getactivity()
-                # 获取当前运行的activity
+            currenttime = int(abs(round(time.time(), 0)))
+            # 获取当前运行时间
 
-                bsm.whitelistrun(activity,whitelist)
-                # 检测monkey运行状态
+            logger.log_info('已经运行时间: %d' % (currenttime - starttime))
+            logger.log_info('预期运行时间: %d' % (int(runtime) * 60))
 
-                cpu.getcpu(activity)
-                # 采集CPU
-                mem.getmeminfo(activity)
-                # 采集内存
-                net.selectnetwork(simulator,activity)
-                # 采集流量
-                fps.getfps(activity)
-                # 采集FPS
+            if (currenttime - starttime) >= (int(runtime) * 60):
+                bsm.stopmonkey()
+                flag = False
 
-                currenttime = int(abs(round(time.time(), 0)))
-                # 获取当前运行时间
-
-                logger.log_info('已经运行时间: %d' % (currenttime - starttime))
-                logger.log_info('预期运行时间: %d' % (int(runtime) * 60))
-
-                if (currenttime - starttime) >= (int(runtime) * 60):
-                    bsm.stopmonkey()
-                    flag = False
-
-                else:
-                    time.sleep(30)
+            else:
+                time.sleep(30)
 
 
-            logger.log_info('采集性能数据结束')
+        logger.log_info('采集性能数据结束')
 
-            endtime = int(abs(round(time.time(), 0)))
-            difftime = (endtime - starttime)
+        endtime = int(abs(round(time.time(), 0)))
+        difftime = (endtime - starttime)
 
-            endtimestamps = time.strftime('%Y-%m-%d %H:%M:%S')
+        endtimestamps = time.strftime('%Y-%m-%d %H:%M:%S')
 
-            logger.log_info('Monkey脚本 - 结束' + '\n' + \
-                  ',结束时间:%s' % str(endtimestamps) + \
-                  ',耗时%s秒' % str(difftime))
+        logger.log_info('Monkey脚本 - 结束' + '\n' + \
+              ',结束时间:%s' % str(endtimestamps) + \
+              ',耗时%s秒' % str(difftime))
 
-            adc.sendbroadcast(1)
-            # 关闭隐藏导航
+        adc.sendbroadcast(1)
+        # 关闭隐藏导航
 
-            if bsm.writeerror(monkeylog, writeerror) == 0:
-                # 获取monkeylog所有日志
-                send_mail(devices,monkeylog, writeerror,str(difftime),monkeycmd)
-                # 发送报警邮件
-                dt= time.strftime("%Y-%m-%d %H:%M:%S")
-                # 插入数据库时间
-                CrashSQL().insert_table("""'%s','%s','%s','crash','%s'""" % (dt,devices,adc.getpackageinfo(apkname),monkeylog))
-                # 设备号、apk版本号、monkeylog日志插入android_crash表中
-
-            CrashSQL().insert_table(
-                """'%s','%s','%s','run success','%s'""" % (time.strftime("%Y-%m-%d %H:%M:%S"), devices, adc.getpackageinfo(apkname), ''))
+        if bsm.writeerror(monkeylog, writeerror) == 0:
+            # 获取monkeylog所有日志
+            send_mail(devices,monkeylog, writeerror,str(difftime),monkeycmd)
+            # 发送报警邮件
+            dt= time.strftime("%Y-%m-%d %H:%M:%S")
+            # 插入数据库时间
+            CrashSQL().insert_table("""'%s','%s','%s','crash','%s'""" % (dt,devices,adc.getpackageinfo(apkname),monkeylog))
             # 设备号、apk版本号、monkeylog日志插入android_crash表中
-                      
-            Flask.task(monkeycmd=monkeycmd)
-            # 执行生成性能报告
+
+        CrashSQL().insert_table(
+            """'%s','%s','%s','run success','%s'""" % (time.strftime("%Y-%m-%d %H:%M:%S"), devices, adc.getpackageinfo(apkname), ''))
+        # 设备号、apk版本号、monkeylog日志插入android_crash表中
+
+        Flask.task(monkeycmd=monkeycmd)
+        # 执行生成性能报告
 
 
 

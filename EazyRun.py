@@ -1,5 +1,12 @@
 # coding=utf-8
-import sys, getopt,os
+
+
+'''
+配置config.yaml执行
+@author xinxi
+'''
+
+
 from GetMemory import GetMemory
 from GetCPU import GetCPU
 from GetNetWork import GetNetWork
