@@ -47,6 +47,10 @@ python EasyRun.py
 # 性能报告
 ./ReportServer/performanceReport目录下
 
+报告展示如下:
+
+![image](Report.png)
+
 # 生成项目依赖并安装
 
 ```
